@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Web Application Vulnerability Assessment Report</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #222; line-height: 1.7; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, #1a3a6b 0%, #2a5298 100%); color: white; padding: 48px 40px 40px; }
+  .header h1 { font-size: 2.4rem; font-weight: 700; margin-bottom: 16px; }
+  .header .meta { font-size: 0.95rem; opacity: 0.88; line-height: 2; }
+  .header .meta span { display: block; }
+  .badge { display: inline-block; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); border-radius: 20px; padding: 4px 14px; font-size: 0.82rem; margin-top: 14px; }
+
+  /* Layout */
+  .container { max-width: 980px; margin: 0 auto; padding: 0 24px 60px; }
+
+  /* TOC */
+  .toc { background: white; border-left: 5px solid #2a5298; border-radius: 6px; padding: 28px 32px; margin: 36px 0 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .toc h2 { color: #2a5298; font-size: 1.15rem; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 6px 0; }
+  .toc a { color: #2a5298; text-decoration: none; font-size: 0.95rem; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Sections */
+  .section { background: white; border-radius: 8px; padding: 36px 40px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .section h2 { color: #1a3a6b; font-size: 1.4rem; border-bottom: 2px solid #e8eef6; padding-bottom: 12px; margin-bottom: 22px; }
+  .section h3 { color: #2a5298; font-size: 1.1rem; margin: 24px 0 10px; }
+  .section p { margin-bottom: 14px; font-size: 0.97rem; color: #333; }
+  .section ul, .section ol { padding-left: 22px; margin-bottom: 14px; }
+  .section li { margin: 6px 0; font-size: 0.97rem; }
+
+  /* Summary cards */
+  .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0; }
+  .card { border-radius: 10px; padding: 22px 16px; text-align: center; }
+  .card .count { font-size: 2.4rem; font-weight: 700; }
+  .card .label { font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  .card.high { background: #fdecea; color: #c0392b; border: 1px solid #f5c6c2; }
+  .card.medium { background: #fff4e5; color: #d35400; border: 1px solid #fddcb0; }
+  .card.low { background: #fefce8; color: #b7950b; border: 1px solid #f9e79f; }
+  .card.info { background: #eaf4fb; color: #1a6fa0; border: 1px solid #b8dff5; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.93rem; }
+  th { background: #2a5298; color: white; padding: 11px 14px; text-align: left; font-weight: 600; }
+  td { padding: 10px 14px; border-bottom: 1px solid #e8eef6; vertical-align: top; }
+  tr:nth-child(even) td { background: #f7fafd; }
+  tr:hover td { background: #eef3fb; }
+
+  /* Severity badges */
+  .sev { display: inline-block; padding: 3px 11px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; }
+  .sev-high { background: #fdecea; color: #c0392b; border: 1px solid #f5c6c2; }
+  .sev-medium { background: #fff4e5; color: #d35400; border: 1px solid #fddcb0; }
+  .sev-low { background: #fefce8; color: #b7950b; border: 1px solid #f9e79f; }
+  .sev-info { background: #eaf4fb; color: #1a6fa0; border: 1px solid #b8dff5; }
+
+  /* Finding cards */
+  .finding { border: 1px solid #e0e8f0; border-radius: 8px; padding: 24px 28px; margin: 20px 0; }
+  .finding-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+  .finding-header h3 { color: #1a3a6b; margin: 0; font-size: 1.05rem; }
+  .finding .field { margin: 10px 0; font-size: 0.95rem; }
+  .finding .field strong { color: #444; min-width: 120px; display: inline-block; }
+  .finding.high-f { border-left: 5px solid #e74c3c; }
+  .finding.medium-f { border-left: 5px solid #e67e22; }
+  .finding.low-f { border-left: 5px solid #f1c40f; }
+  .finding.info-f { border-left: 5px solid #3498db; }
+
+  /* Code / callout */
+  .callout { background: #f0f4f8; border-left: 4px solid #2a5298; padding: 14px 18px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 0.93rem; color: #333; }
+  code { background: #eef2f7; padding: 2px 7px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.87rem; }
+
+  /* Screenshot */
+  .screenshot { border: 1px solid #dde4ee; border-radius: 8px; overflow: hidden; margin: 18px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .screenshot img { width: 100%; display: block; }
+  .screenshot-caption { background: #f7fafd; padding: 8px 14px; font-size: 0.82rem; color: #666; border-top: 1px solid #dde4ee; }
+
+  /* Risk matrix colors */
+  .risk-critical { background: #fdecea; color: #c0392b; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .risk-high { background: #fdecea; color: #c0392b; padding: 3px 8px; border-radius: 4px; }
+  .risk-medium { background: #fff4e5; color: #d35400; padding: 3px 8px; border-radius: 4px; }
+  .risk-low { background: #fefce8; color: #b7950b; padding: 3px 8px; border-radius: 4px; }
+
+  /* Footer */
+  .footer { text-align: center; padding: 32px; background: #1a3a6b; color: rgba(255,255,255,0.7); font-size: 0.85rem; margin-top: 40px; }
+  .footer a { color: rgba(255,255,255,0.85); }
+
+  @media(max-width: 680px) {
+    .header h1 { font-size: 1.6rem; }
+    .summary-cards { grid-template-columns: repeat(2, 1fr); }
+    .section { padding: 22px 18px; }
+    .header { padding: 30px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>Web Application Vulnerability Assessment Report</h1>
+  <div class="meta">
+    <span><strong>Target:</strong> http://testasp.vulnweb.com</span>
+    <span><strong>Assessor:</strong> Vanessa Baah-Williams</span>
+    <span><strong>Date:</strong> 17 May 2026</span>
+    <span><strong>Tool:</strong> OWASP ZAP v2.17.0</span>
+    <span><strong>Status:</strong> Final</span>
+  </div>
+  <div class="badge">🔒 Educational Assessment — Legally Sanctioned Environment</div>
+</div>
+
+<div class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li><a href="#executive-summary">Executive Summary</a></li>
+      <li><a href="#introduction">Introduction</a></li>
+      <li><a href="#scope">Scope and Objectives</a></li>
+      <li><a href="#methodology">Methodology</a></li>
+      <li><a href="#summary">Summary of Findings</a></li>
+      <li><a href="#findings">Detailed Findings</a></li>
+      <li><a href="#risk-matrix">Risk Matrix</a></li>
+      <li><a href="#recommendations">Recommendations</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#references">References</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. EXECUTIVE SUMMARY -->
+  <div class="section" id="executive-summary">
+    <h2>1. Executive Summary</h2>
+    <p>A web application vulnerability assessment was conducted against <strong>testasp.vulnweb.com</strong>, a deliberately vulnerable web application provided by Acunetix for legal security testing and educational purposes. The assessment used <strong>OWASP ZAP (Zed Attack Proxy)</strong>, an industry-standard open-source security scanner, to identify and document weaknesses in the application.</p>
+    <p>A total of <strong>19 vulnerabilities</strong> were discovered across four severity levels:</p>
+
+    <div class="summary-cards">
+      <div class="card high"><div class="count">4</div><div class="label">🔴 High</div></div>
+      <div class="card medium"><div class="count">4</div><div class="label">🟠 Medium</div></div>
+      <div class="card low"><div class="count">7</div><div class="label">🟡 Low</div></div>
+      <div class="card info"><div class="count">4</div><div class="label">🔵 Info</div></div>
+    </div>
+
+    <p>The most critical findings include <strong>SQL Injection</strong>, <strong>Path Traversal</strong>, and <strong>External Redirect</strong> vulnerabilities — all of which could be exploited by an attacker to compromise the application and its database. Immediate remediation of all high-severity issues is strongly recommended.</p>
+  </div>
+
+  <!-- 2. INTRODUCTION -->
+  <div class="section" id="introduction">
+    <h2>2. Introduction</h2>
+    <h3>2.1 What is a Web Application Vulnerability Assessment?</h3>
+    <p>A web application vulnerability assessment is a structured security review process that identifies, classifies, and prioritizes security weaknesses in a web application. Unlike a penetration test, which actively exploits vulnerabilities, a vulnerability assessment focuses on <strong>discovering and documenting</strong> weaknesses so they can be remediated before a real attacker finds them.</p>
+
+    <h3>2.2 Why is this important?</h3>
+    <p>Web applications are among the most common targets for cyberattacks. According to OWASP (Open Web Application Security Project), vulnerabilities like SQL Injection and Cross-Site Scripting consistently rank among the most dangerous and most exploited security flaws worldwide. Identifying these weaknesses early helps organizations:</p>
+    <ul>
+      <li>Protect sensitive user data from theft or exposure</li>
+      <li>Prevent unauthorized access to systems and databases</li>
+      <li>Comply with data protection regulations such as GDPR</li>
+      <li>Maintain application integrity and user trust</li>
+    </ul>
+
+    <h3>2.3 About the Target Application</h3>
+    <p><strong>testasp.vulnweb.com</strong> is a test web application intentionally built with security vulnerabilities by Acunetix, a cybersecurity company. It is provided specifically for security professionals, students, and researchers to practice vulnerability assessment legally and ethically. It simulates a real-world ASP-based web application with a Microsoft SQL Server database backend.</p>
+
+    <h3>2.4 About OWASP ZAP</h3>
+    <p>OWASP ZAP (Zed Attack Proxy) is a free, open-source web application security scanner maintained by the Open Web Application Security Project. It is one of the most widely used tools for identifying vulnerabilities in web applications. ZAP works by:</p>
+    <ul>
+      <li>Acting as a <strong>proxy</strong> between the browser and the target application to intercept traffic</li>
+      <li><strong>Spidering</strong> the application to discover all pages, forms, and endpoints</li>
+      <li>Running an <strong>active scan</strong> that probes each discovered page for known vulnerabilities</li>
+      <li>Generating a detailed <strong>alerts report</strong> categorized by severity</li>
+    </ul>
+  </div>
+
+  <!-- 3. SCOPE -->
+  <div class="section" id="scope">
+    <h2>3. Scope and Objectives</h2>
+    <h3>3.1 Scope</h3>
+    <table>
+      <tr><th>Item</th><th>Details</th></tr>
+      <tr><td>Target URL</td><td>http://testasp.vulnweb.com</td></tr>
+      <tr><td>Application Type</td><td>ASP-based web app with MsSQL database</td></tr>
+      <tr><td>Assessment Type</td><td>Automated scanning + manual review</td></tr>
+      <tr><td>Tool Used</td><td>OWASP ZAP v2.17.0</td></tr>
+      <tr><td>Environment</td><td>Legal, sanctioned test environment (Acunetix)</td></tr>
+      <tr><td>Out of Scope</td><td>Any domain or IP not listed above</td></tr>
+    </table>
+
+    <h3>3.2 Objectives</h3>
+    <ol>
+      <li>Identify all detectable security vulnerabilities in the target application</li>
+      <li>Classify each vulnerability by type and severity level</li>
+      <li>Understand the potential impact of each vulnerability if exploited</li>
+      <li>Provide clear, actionable recommendations to remediate each issue</li>
+      <li>Produce a professional report suitable for academic submission</li>
+    </ol>
+
+    <h3>3.3 Legal and Ethical Statement</h3>
+    <div class="callout">This assessment was conducted exclusively on testasp.vulnweb.com — a legally sanctioned, deliberately vulnerable application designed for security testing and education. No unauthorized systems were accessed at any point. All testing was performed ethically and within the defined scope above.</div>
+  </div>
+
+  <!-- 4. METHODOLOGY -->
+  <div class="section" id="methodology">
+    <h2>4. Methodology</h2>
+    <p>The assessment followed a structured four-phase approach based on industry-standard security testing practices:</p>
+
+    <h3>Phase 1 — Setup and Configuration</h3>
+    <ul>
+      <li>Installed and launched OWASP ZAP v2.17.0 on macOS</li>
+      <li>Configured browser proxy to route all traffic through ZAP at <code>localhost:8080</code></li>
+      <li>Confirmed ZAP was successfully intercepting traffic from the target</li>
+      <li>Set target URL to <code>http://testasp.vulnweb.com</code></li>
+    </ul>
+
+    <h3>Phase 2 — Reconnaissance (Spidering)</h3>
+    <ul>
+      <li>Used ZAP's <strong>Traditional Spider</strong> to crawl the application and map all pages, links, and forms</li>
+      <li>Used ZAP's <strong>Ajax Spider</strong> with Firefox to discover dynamically loaded content</li>
+      <li>Result: A complete site map of all accessible endpoints was generated</li>
+    </ul>
+
+    <h3>Phase 3 — Active Scanning</h3>
+    <ul>
+      <li>Launched ZAP's <strong>Active Scan</strong> against the full discovered site map</li>
+      <li>ZAP probed each page and parameter for known vulnerability patterns including SQL Injection, XSS, Path Traversal, CSRF, and insecure headers</li>
+      <li>Both GET and POST parameters were tested</li>
+      <li>Result: <strong>19 alerts</strong> generated across 4 severity levels</li>
+    </ul>
+
+    <h3>Phase 4 — Analysis and Reporting</h3>
+    <ul>
+      <li>Reviewed each alert in ZAP's Alerts panel and verified findings</li>
+      <li>Categorized findings by severity (High, Medium, Low, Informational)</li>
+      <li>Documented each vulnerability with description, impact, and remediation advice</li>
+      <li>Exported the full ZAP HTML scan report</li>
+      <li>Captured screenshot evidence of the alerts panel</li>
+    </ul>
+  </div>
+
+  <!-- 5. SUMMARY -->
+  <div class="section" id="summary">
+    <h2>5. Summary of Findings</h2>
+    <p>OWASP ZAP discovered <strong>19 vulnerabilities</strong> during the automated scan of testasp.vulnweb.com. The table below provides a complete overview:</p>
+
+    <div class="screenshot">
+      <img src="screenshots/alerts.png" alt="ZAP Alerts Panel showing all 19 findings"/>
+      <div class="screenshot-caption">Figure 1: OWASP ZAP Alerts Panel — full list of discovered vulnerabilities</div>
+    </div>
+
+    <table>
+      <tr><th>#</th><th>Vulnerability</th><th>Severity</th><th>Instances</th></tr>
+      <tr><td>1</td><td>SQL Injection</td><td><span class="sev sev-high">High</span></td><td>4</td></tr>
+      <tr><td>2</td><td>SQL Injection – MsSQL Time Based</td><td><span class="sev sev-high">High</span></td><td>2</td></tr>
+      <tr><td>3</td><td>External Redirect</td><td><span class="sev sev-high">High</span></td><td>2</td></tr>
+      <tr><td>4</td><td>Path Traversal</td><td><span class="sev sev-high">High</span></td><td>2</td></tr>
+      <tr><td>5</td><td>Absence of Anti-CSRF Tokens</td><td><span class="sev sev-medium">Medium</span></td><td>4</td></tr>
+      <tr><td>6</td><td>Content Security Policy (CSP) Header Not Set</td><td><span class="sev sev-medium">Medium</span></td><td>1</td></tr>
+      <tr><td>7</td><td>Application Error Disclosure</td><td><span class="sev sev-medium">Medium</span></td><td>1</td></tr>
+      <tr><td>8</td><td>Missing Anti-Clickjacking Header</td><td><span class="sev sev-medium">Medium</span></td><td>1</td></tr>
+      <tr><td>9</td><td>HTTP Only Site</td><td><span class="sev sev-low">Low</span></td><td>1</td></tr>
+      <tr><td>10</td><td>Cookie No HttpOnly Flag</td><td><span class="sev sev-low">Low</span></td><td>1</td></tr>
+      <tr><td>11</td><td>Cookie without SameSite Attribute</td><td><span class="sev sev-low">Low</span></td><td>1</td></tr>
+      <tr><td>12</td><td>Information Disclosure – Debug Error Messages</td><td><span class="sev sev-low">Low</span></td><td>1</td></tr>
+      <tr><td>13</td><td>Server Leaks Info via X-Powered-By Header</td><td><span class="sev sev-low">Low</span></td><td>1</td></tr>
+      <tr><td>14</td><td>Server Leaks Version via Server Header</td><td><span class="sev sev-low">Low</span></td><td>1</td></tr>
+      <tr><td>15</td><td>X-Content-Type-Options Header Missing</td><td><span class="sev sev-low">Low</span></td><td>1</td></tr>
+      <tr><td>16</td><td>GET for POST</td><td><span class="sev sev-info">Info</span></td><td>2</td></tr>
+      <tr><td>17</td><td>Information Disclosure – Suspicious Comments</td><td><span class="sev sev-info">Info</span></td><td>1</td></tr>
+      <tr><td>18</td><td>Session Management Response Identified</td><td><span class="sev sev-info">Info</span></td><td>1</td></tr>
+      <tr><td>19</td><td>User Agent Fuzzer</td><td><span class="sev sev-info">Info</span></td><td>1</td></tr>
+    </table>
+  </div>
+
+  <!-- 6. DETAILED FINDINGS -->
+  <div class="section" id="findings">
+    <h2>6. Detailed Findings</h2>
+
+    <div class="finding high-f">
+      <div class="finding-header"><span class="sev sev-high">High</span><h3>6.1 SQL Injection</h3></div>
+      <div class="field"><strong>Instances:</strong> 4</div>
+      <div class="field"><strong>OWASP Category:</strong> A03:2021 – Injection</div>
+      <div class="field"><strong>What is it?</strong><p>SQL Injection occurs when an attacker inserts malicious SQL code into an input field such as a login form or search box. If the application does not properly validate or sanitize that input, the malicious code gets executed directly by the database. This is one of the most dangerous and most exploited vulnerabilities in existence.</p></div>
+      <div class="field"><strong>What ZAP found:</strong><p>ZAP detected 4 endpoints where user input is passed directly into SQL queries without sanitization. Entering a payload such as <code>' OR '1'='1</code> into a login field could bypass authentication entirely.</p></div>
+      <div class="field"><strong>Impact:</strong>
+        <ul>
+          <li>Complete bypass of login authentication</li>
+          <li>Unauthorized access to the entire database</li>
+          <li>Theft, modification, or deletion of sensitive records</li>
+          <li>Possible remote code execution on the server</li>
+        </ul>
+      </div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Use parameterized queries (prepared statements) instead of building SQL by concatenating user input. Apply the principle of least privilege to database accounts. Consider using an ORM such as Entity Framework or Hibernate.</div>
+      </div>
+    </div>
+
+    <div class="finding high-f">
+      <div class="finding-header"><span class="sev sev-high">High</span><h3>6.2 SQL Injection – MsSQL Time Based</h3></div>
+      <div class="field"><strong>Instances:</strong> 2</div>
+      <div class="field"><strong>OWASP Category:</strong> A03:2021 – Injection</div>
+      <div class="field"><strong>What is it?</strong><p>A blind SQL injection technique where the attacker cannot see the output directly. Instead, they inject commands that cause the database to pause for a set number of seconds. If the response is delayed, the injection succeeded. This confirms the backend uses <strong>Microsoft SQL Server</strong>.</p></div>
+      <div class="field"><strong>Impact:</strong><p>Silent data exfiltration without visible output. An attacker can extract the full database schema, usernames, passwords, and sensitive records over time — all without triggering obvious errors.</p></div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Same as 6.1 — parameterized queries and input validation. Additionally, monitor database query execution times for anomalies and implement a Web Application Firewall (WAF).</div>
+      </div>
+    </div>
+
+    <div class="finding high-f">
+      <div class="finding-header"><span class="sev sev-high">High</span><h3>6.3 External Redirect</h3></div>
+      <div class="field"><strong>Instances:</strong> 2</div>
+      <div class="field"><strong>OWASP Category:</strong> A01:2021 – Broken Access Control</div>
+      <div class="field"><strong>What is it?</strong><p>The application accepts a URL as a parameter and redirects users to it without validating whether it is safe or trusted. For example: <code>http://testasp.vulnweb.com/redirect?url=http://malicious.com</code></p></div>
+      <div class="field"><strong>Impact:</strong>
+        <ul>
+          <li>Phishing attacks — users trust the original domain and get redirected to fake login pages</li>
+          <li>Malware distribution via redirects to infected sites</li>
+          <li>Reputational damage to the organization</li>
+        </ul>
+      </div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Never use user-supplied input directly in redirect URLs. Maintain a server-side whitelist of allowed destinations. Use indirect references (e.g. <code>?dest=1</code> mapped server-side) instead of passing raw URLs.</div>
+      </div>
+    </div>
+
+    <div class="finding high-f">
+      <div class="finding-header"><span class="sev sev-high">High</span><h3>6.4 Path Traversal</h3></div>
+      <div class="field"><strong>Instances:</strong> 2</div>
+      <div class="field"><strong>OWASP Category:</strong> A01:2021 – Broken Access Control</div>
+      <div class="field"><strong>What is it?</strong><p>Path traversal allows an attacker to access files outside the intended web root by injecting sequences like <code>../../</code> into file path parameters, navigating up the directory tree to read sensitive system files.</p></div>
+      <div class="field"><strong>Impact:</strong>
+        <ul>
+          <li>Access to server configuration files and credentials</li>
+          <li>Exposure of application source code and API keys</li>
+          <li>Full server compromise in severe cases</li>
+        </ul>
+      </div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Validate and sanitize all file path inputs. Use a whitelist of allowed file names. Apply server-side path canonicalization before use. Run the application with minimum required file system permissions.</div>
+      </div>
+    </div>
+
+    <div class="finding medium-f">
+      <div class="finding-header"><span class="sev sev-medium">Medium</span><h3>6.5 Absence of Anti-CSRF Tokens</h3></div>
+      <div class="field"><strong>Instances:</strong> 4</div>
+      <div class="field"><strong>OWASP Category:</strong> A01:2021 – Broken Access Control</div>
+      <div class="field"><strong>What is it?</strong><p>Cross-Site Request Forgery (CSRF) tricks a logged-in user's browser into making unwanted requests to a trusted site. Without CSRF tokens, the application cannot distinguish legitimate requests from forged ones sent by a malicious third-party site.</p></div>
+      <div class="field"><strong>Impact:</strong><p>Unauthorized actions on behalf of authenticated users — including password changes, data modifications, or financial transactions — without the user's knowledge or consent.</p></div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Implement the synchronizer token pattern — include a unique secret CSRF token in every state-changing form. Use the SameSite cookie attribute and validate Origin/Referer headers on sensitive requests.</div>
+      </div>
+    </div>
+
+    <div class="finding medium-f">
+      <div class="finding-header"><span class="sev sev-medium">Medium</span><h3>6.6 Content Security Policy (CSP) Header Not Set</h3></div>
+      <div class="field"><strong>What is it?</strong><p>A Content Security Policy is an HTTP header that tells the browser which content sources are trusted. Without it, the browser executes any script it encounters, making XSS attacks significantly more effective and damaging.</p></div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Add <code>Content-Security-Policy: default-src 'self'</code> to all HTTP responses. Gradually allow trusted third-party sources as needed.</div>
+      </div>
+    </div>
+
+    <div class="finding medium-f">
+      <div class="finding-header"><span class="sev sev-medium">Medium</span><h3>6.7 Application Error Disclosure</h3></div>
+      <div class="field"><strong>What is it?</strong><p>The application displays detailed error messages in the browser, including stack traces, database query details, server file paths, and software versions. This information is a goldmine for attackers mapping the application's internals.</p></div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Show only generic, user-friendly error messages to end users. Log full error details server-side only. Disable debug mode in all production environments.</div>
+      </div>
+    </div>
+
+    <div class="finding medium-f">
+      <div class="finding-header"><span class="sev sev-medium">Medium</span><h3>6.8 Missing Anti-Clickjacking Header</h3></div>
+      <div class="field"><strong>What is it?</strong><p>Clickjacking embeds the target application in a hidden iframe on a malicious page, tricking users into clicking on invisible elements. Without X-Frame-Options, any website can embed this application.</p></div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Add the HTTP header: <code>X-Frame-Options: DENY</code> or use CSP: <code>Content-Security-Policy: frame-ancestors 'none'</code></div>
+      </div>
+    </div>
+
+    <div class="finding low-f">
+      <div class="finding-header"><span class="sev sev-low">Low</span><h3>6.9 Cookie Security Issues</h3></div>
+      <div class="field"><strong>Findings:</strong> Cookie No HttpOnly Flag | Cookie without SameSite Attribute</div>
+      <div class="field"><strong>What is it?</strong><p>Session cookies missing the <strong>HttpOnly</strong> flag can be read by JavaScript, enabling session theft via XSS. Cookies missing the <strong>SameSite</strong> attribute are sent with cross-site requests, enabling CSRF attacks.</p></div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Set <code>HttpOnly</code>, <code>SameSite=Strict</code>, and <code>Secure</code> flags on all session cookies: <code>Set-Cookie: session=abc; HttpOnly; SameSite=Strict; Secure</code></div>
+      </div>
+    </div>
+
+    <div class="finding low-f">
+      <div class="finding-header"><span class="sev sev-low">Low</span><h3>6.10 Information Disclosure via HTTP Headers</h3></div>
+      <div class="field"><strong>Findings:</strong> X-Powered-By Header | Server Version Header | X-Content-Type-Options Missing | Debug Error Messages</div>
+      <div class="field"><strong>What is it?</strong><p>The server is leaking technical details through HTTP response headers — including the web framework (e.g. <code>X-Powered-By: ASP.NET</code>) and server version (e.g. <code>Server: Microsoft-IIS/7.5</code>). This helps attackers identify known exploits for those specific versions.</p></div>
+      <div class="field"><strong>Recommendation:</strong>
+        <div class="callout">Remove or suppress <code>X-Powered-By</code> and <code>Server</code> headers in the web server configuration. Add <code>X-Content-Type-Options: nosniff</code> to prevent MIME-type sniffing attacks.</div>
+      </div>
+    </div>
+
+    <div class="finding info-f">
+      <div class="finding-header"><span class="sev sev-info">Info</span><h3>6.11 Informational Findings</h3></div>
+      <table>
+        <tr><th>Finding</th><th>Description</th></tr>
+        <tr><td>GET for POST</td><td>Some POST endpoints also accept GET requests, potentially exposing sensitive data in URLs and server logs</td></tr>
+        <tr><td>Suspicious Comments</td><td>HTML source contains developer comments that may reveal implementation details to attackers</td></tr>
+        <tr><td>Session Management Identified</td><td>ZAP detected session management mechanisms — useful context for further manual testing</td></tr>
+        <tr><td>User Agent Fuzzer</td><td>ZAP tested different browser User-Agent strings with no major inconsistencies found</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 7. RISK MATRIX -->
+  <div class="section" id="risk-matrix">
+    <h2>7. Risk Matrix</h2>
+    <table>
+      <tr><th>Vulnerability</th><th>Likelihood</th><th>Impact</th><th>Overall Risk</th></tr>
+      <tr><td>SQL Injection</td><td>High</td><td>Critical</td><td><span class="risk-critical">Critical</span></td></tr>
+      <tr><td>MsSQL Time-Based SQLi</td><td>High</td><td>Critical</td><td><span class="risk-critical">Critical</span></td></tr>
+      <tr><td>External Redirect</td><td>Medium</td><td>High</td><td><span class="risk-high">High</span></td></tr>
+      <tr><td>Path Traversal</td><td>Medium</td><td>High</td><td><span class="risk-high">High</span></td></tr>
+      <tr><td>Absence of CSRF Tokens</td><td>Medium</td><td>Medium</td><td><span class="risk-medium">Medium</span></td></tr>
+      <tr><td>CSP Header Not Set</td><td>High</td><td>Medium</td><td><span class="risk-medium">Medium</span></td></tr>
+      <tr><td>Application Error Disclosure</td><td>High</td><td>Medium</td><td><span class="risk-medium">Medium</span></td></tr>
+      <tr><td>Missing Clickjacking Header</td><td>Low</td><td>Medium</td><td><span class="risk-medium">Medium</span></td></tr>
+      <tr><td>Cookie Security Issues</td><td>Medium</td><td>Low</td><td><span class="risk-low">Low</span></td></tr>
+      <tr><td>Information Disclosure Headers</td><td>High</td><td>Low</td><td><span class="risk-low">Low</span></td></tr>
+    </table>
+  </div>
+
+  <!-- 8. RECOMMENDATIONS -->
+  <div class="section" id="recommendations">
+    <h2>8. Recommendations</h2>
+    <h3>🔴 Immediate Actions (High Priority)</h3>
+    <ol>
+      <li><strong>Fix SQL Injection</strong> — Replace all dynamic SQL queries with parameterized queries or prepared statements. This is the single most important fix.</li>
+      <li><strong>Fix Path Traversal</strong> — Validate and sanitize all file path inputs using server-side path whitelisting.</li>
+      <li><strong>Fix External Redirect</strong> — Remove or restrict URL redirect parameters. Use a server-side whitelist of allowed destinations only.</li>
+    </ol>
+    <h3>🟠 Short-Term Actions (Medium Priority)</h3>
+    <ol>
+      <li><strong>Implement CSRF tokens</strong> — Add unique tokens to all state-changing forms across the application.</li>
+      <li><strong>Set security headers</strong> — Add CSP, X-Frame-Options, and X-Content-Type-Options to all HTTP responses.</li>
+      <li><strong>Disable error disclosure</strong> — Show only generic error messages to users; log details server-side only.</li>
+    </ol>
+    <h3>🟡 Ongoing Actions (Low Priority)</h3>
+    <ol>
+      <li><strong>Secure all cookies</strong> — Add HttpOnly, SameSite, and Secure flags to every session cookie.</li>
+      <li><strong>Remove leaking headers</strong> — Suppress X-Powered-By and Server version headers from all responses.</li>
+      <li><strong>Clean HTML source</strong> — Remove all developer comments from production code.</li>
+      <li><strong>Enforce HTTPS</strong> — Redirect all HTTP traffic to HTTPS across the entire application.</li>
+    </ol>
+  </div>
+
+  <!-- 9. CONCLUSION -->
+  <div class="section" id="conclusion">
+    <h2>9. Conclusion</h2>
+    <p>This vulnerability assessment of <strong>testasp.vulnweb.com</strong> identified <strong>19 security vulnerabilities</strong>, including 4 of high severity. The application demonstrates several critical weaknesses commonly found in real-world web applications — particularly around input validation (SQL Injection, Path Traversal) and access control (External Redirect, CSRF).</p>
+    <p>The use of <strong>OWASP ZAP</strong> proved highly effective in automatically discovering a wide range of vulnerabilities in a short timeframe. However, automated tools should always be complemented with manual testing to uncover logic flaws and context-specific vulnerabilities that scanners may miss.</p>
+    <p>Addressing the high-severity findings — especially SQL Injection — should be treated as an urgent priority. These vulnerabilities, if exploited by a malicious actor, could lead to complete application and database compromise, data theft, and significant reputational damage.</p>
+  </div>
+
+  <!-- 10. REFERENCES -->
+  <div class="section" id="references">
+    <h2>10. References</h2>
+    <ul>
+      <li><a href="https://owasp.org/www-project-top-ten/" target="_blank">OWASP Top 10 (2021)</a></li>
+      <li><a href="https://www.zaproxy.org/docs/" target="_blank">OWASP ZAP Official Documentation</a></li>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" target="_blank">OWASP SQL Injection Prevention Cheat Sheet</a></li>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html" target="_blank">OWASP CSRF Prevention Cheat Sheet</a></li>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html" target="_blank">OWASP Clickjacking Defense Cheat Sheet</a></li>
+      <li><a href="https://www.acunetix.com/blog/articles/acunetix-test-websites/" target="_blank">Acunetix Test Applications</a></li>
+      <li><a href="https://csrc.nist.gov/publications/detail/sp/800-95/final" target="_blank">NIST Web Application Security Guidelines</a></li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>Web Application Vulnerability Assessment Report &nbsp;|&nbsp; Vanessa Baah-Williams &nbsp;|&nbsp; 17 May 2026</p>
+  <p style="margin-top:6px;">Conducted on a legally sanctioned vulnerable application for educational purposes only.</p>
+</div>
+
+</body>
+</html>
